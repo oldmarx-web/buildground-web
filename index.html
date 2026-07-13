@@ -314,9 +314,29 @@ document.getElementById("board-body").innerHTML = DATA.leaderboard
 document.getElementById("hall-list").innerHTML = DATA.hallOfFame
   .map(h=>`<li><b>${h.name}</b> · ${h.level} 취득</li>`).join("") || "<li>이번 달 첫 주인공을 기다립니다.</li>";
 
-document.getElementById("shorts").innerHTML = DATA.videoIds.map(id => id
-  ? `<div class="short"><iframe src="https://www.youtube.com/embed/${id}" title="빌드그라운드 쇼츠" allowfullscreen loading="lazy"></iframe></div>`
-  : `<div class="short"><div class="ph">쇼츠 업로드 후<br>영상 ID를 넣어주세요</div></div>`).join("");
+/* 최신 쇼츠 3개 자동 로드 — 새 쇼츠를 올리면 옛것부터 밀려난다 */
+const CHANNEL_ID = "UClzeSFfuuBMhOpDgZ8whb9g";
+function renderShorts(ids){
+  document.getElementById("shorts").innerHTML = ids.slice(0,3).map(id => id
+    ? `<div class="short"><iframe src="https://www.youtube.com/embed/${id}" title="빌드그라운드 쇼츠" allowfullscreen loading="lazy"></iframe></div>`
+    : `<div class="short"><div class="ph">최신 쇼츠 불러오는 중…</div></div>`).join("");
+}
+renderShorts(DATA.videoIds); // 우선 표시(수동 백업)
+(async () => {
+  const feed = "https://www.youtube.com/feeds/videos.xml?channel_id=" + CHANNEL_ID;
+  const proxies = [
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent(feed),
+    "https://corsproxy.io/?url=" + encodeURIComponent(feed)
+  ];
+  for (const url of proxies){
+    try{
+      const r = await fetch(url); if(!r.ok) continue;
+      const xml = new DOMParser().parseFromString(await r.text(), "text/xml");
+      const ids = [...xml.getElementsByTagNameNS("*","videoId")].map(n => n.textContent);
+      if (ids.length){ renderShorts(ids); return; }
+    }catch(e){ /* 다음 프록시 시도 */ }
+  }
+})();
 </script>
 
 <div class="mbar">
